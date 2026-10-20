@@ -1,0 +1,157 @@
+estudiante@i-06a2b638ad5637ae8:/home$ cd ~/kafka-dian/entorno
+pwd
+ls
+/home/estudiante/kafka-dian/entorno
+alertas.yml   connect-distributed.properties   docker-compose.etapaC.yml  docker-compose.etapaF.yml    gen-client-configs.sh  minio.sh        pull-images.sh          spark-defaults.conf
+check-env.sh  docker-compose-lab-kafka.yml     docker-compose.etapaD.yml  docker-compose.override.yml  grafana                plugins         secrets
+connect       docker-compose.etapaC-libre.yml  docker-compose.etapaE.yml  gen-certs.sh                 jmx                    prometheus.yml  seed-declaraciones.sql
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker compose -f docker-compose-lab-kafka.yml up -d
+[+] up 5/5
+ ✔ Container kafka-ui         Started                                                                                                                                                                                 1.8s
+ ✔ Container broker2          Healthy                                                                                                                                                                                50.2s
+ ✔ Container broker3          Healthy                                                                                                                                                                                49.7s
+ ✔ Container broker1          Healthy                                                                                                                                                                                50.2s
+ ✔ Container bootstrap-topics Started                                                                                                                                                                                 0.5s
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kq describe --status
+kq: command not found
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker compose -f docker-compose-lab-kafka.yml ps
+NAME       IMAGE                            COMMAND                  SERVICE    CREATED         STATUS                   PORTS
+broker1    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker1    4 weeks ago     Up 3 minutes (healthy)   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp, 0.0.0.0:9101->9101/tcp, [::]:9101->9101/tcp
+broker2    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker2    4 weeks ago     Up 3 minutes (healthy)   0.0.0.0:9094->9094/tcp, [::]:9094->9094/tcp, 9092/tcp, 0.0.0.0:9102->9102/tcp, [::]:9102->9102/tcp
+broker3    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker3    4 weeks ago     Up 3 minutes (healthy)   0.0.0.0:9096->9096/tcp, [::]:9096->9096/tcp, 9092/tcp, 0.0.0.0:9103->9103/tcp, [::]:9103->9103/tcp
+kafka-ui   ghcr.io/kafbat/kafka-ui:v1.1.0   "/bin/sh -c 'java --…"   kafka-ui   3 minutes ago   Up 3 minutes             127.0.0.1:18085->8080/tcp
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kq describe --status
+kq: command not found
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ alias kq='docker exec broker1 /opt/kafka/bin/kafka-metadata-quorum.sh --bootstrap-server broker1:19092'
+alias kt='docker exec broker1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker1:19092'
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kq describe --status
+ClusterId:              dian-kafka-lab-2026
+LeaderId:               3
+LeaderEpoch:            16
+HighWatermark:          42274
+MaxFollowerLag:         0
+MaxFollowerLagTimeMs:   299
+CurrentVoters:          [{"id": 1, "directoryId": null, "endpoints": ["CONTROLLER://broker1:9093"]}, {"id": 2, "directoryId": null, "endpoints": ["CONTROLLER://broker2:9093"]}, {"id": 3, "directoryId": null, "endpoints": ["CONTROLLER://broker3:9093"]}]
+CurrentObservers:       []
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kq describe --replication
+NodeId  DirectoryId             LogEndOffset    Lag     LastFetchTimestamp      LastCaughtUpTimestamp   Status  
+3       AAAAAAAAAAAAAAAAAAAAAA  42732           0       1792506682791           1792506682791           Leader  
+1       AAAAAAAAAAAAAAAAAAAAAA  42732           0       1792506682712           1792506682712           Follower
+2       AAAAAAAAAAAAAAAAAAAAAA  42732           0       1792506682711           1792506682711           Follower
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker1 ls -lh /var/lib/kafka/data/__cluster_metadata-0/
+total 2.9M
+-rw-r--r-- 1 appuser appuser 3.9K Oct 20 14:21 00000000000000000000.index
+-rw-r--r-- 1 appuser appuser 2.0M Sep 21 18:46 00000000000000000000.log
+-rw-r--r-- 1 appuser appuser 5.8K Oct 20 14:21 00000000000000000000.timeindex
+-r-------- 1 appuser appuser  15K Sep 21 18:29 00000000000000027229-0000000007.checkpoint
+-rw-r--r-- 1 appuser appuser  10M Oct 20 14:32 00000000000000029608.index
+-rw-r--r-- 1 appuser appuser 897K Oct 20 14:32 00000000000000029608.log
+-rw-r--r-- 1 appuser appuser   10 Oct 20 14:21 00000000000000029608.snapshot
+-rw-r--r-- 1 appuser appuser  10M Oct 20 14:32 00000000000000029608.timeindex
+-rw-r--r-- 1 appuser appuser   10 Oct 20 14:21 00000000000000041109.snapshot
+-rw-r--r-- 1 appuser appuser   39 Oct 20 14:21 leader-epoch-checkpoint
+-rw-r--r-- 1 appuser appuser   43 Sep 21 14:39 partition.metadata
+-rw-r--r-- 1 appuser appuser  154 Oct 20 14:21 quorum-state
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker1 /opt/kafka/bin/kafka-dump-log.sh --cluster-metadata-decoder \
+  --files /var/lib/kafka/data/__cluster_metadata-0/00000000000000000000.log | grep -E "TOPIC_RECORD|PARTITION_RECORD|REGISTER_BROKER" | head -20
+| offset: 5 CreateTime: 1790001580362 keySize: -1 valueSize: 144 sequence: -1 headerKeys: [] payload: {"type":"REGISTER_BROKER_RECORD","version":3,"data":{"brokerId":1,"isMigratingZkBroker":false,"incarnationId":"C_Jg6cPNQlKjrKzOjZpTiQ","brokerEpoch":5,"endPoints":[{"name":"INTERNAL","host":"broker1","port":19092,"securityProtocol":0},{"name":"EXTERNAL","host":"localhost","port":9092,"securityProtocol":0}],"features":[{"name":"kraft.version","minSupportedVersion":0,"maxSupportedVersion":1},{"name":"metadata.version","minSupportedVersion":1,"maxSupportedVersion":21}],"rack":null,"fenced":true,"inControlledShutdown":false,"logDirs":["0YIX4hhHOZMwBKnogUa2ew"]}}
+| offset: 6 CreateTime: 1790001580414 keySize: -1 valueSize: 144 sequence: -1 headerKeys: [] payload: {"type":"REGISTER_BROKER_RECORD","version":3,"data":{"brokerId":3,"isMigratingZkBroker":false,"incarnationId":"AwSVX1lBSvm7UVoJvxAuqg","brokerEpoch":6,"endPoints":[{"name":"INTERNAL","host":"broker3","port":19092,"securityProtocol":0},{"name":"EXTERNAL","host":"localhost","port":9096,"securityProtocol":0}],"features":[{"name":"kraft.version","minSupportedVersion":0,"maxSupportedVersion":1},{"name":"metadata.version","minSupportedVersion":1,"maxSupportedVersion":21}],"rack":null,"fenced":true,"inControlledShutdown":false,"logDirs":["W1uWtlg5NOf47kWtX-oW4Q"]}}
+| offset: 7 CreateTime: 1790001580414 keySize: -1 valueSize: 144 sequence: -1 headerKeys: [] payload: {"type":"REGISTER_BROKER_RECORD","version":3,"data":{"brokerId":2,"isMigratingZkBroker":false,"incarnationId":"xd6cYKRlRFOzHNYLYVGejQ","brokerEpoch":7,"endPoints":[{"name":"INTERNAL","host":"broker2","port":19092,"securityProtocol":0},{"name":"EXTERNAL","host":"localhost","port":9094,"securityProtocol":0}],"features":[{"name":"kraft.version","minSupportedVersion":0,"maxSupportedVersion":1},{"name":"metadata.version","minSupportedVersion":1,"maxSupportedVersion":21}],"rack":null,"fenced":true,"inControlledShutdown":false,"logDirs":["TAMkE5j4a1MzydLIFg_I-g"]}}
+| offset: 45 CreateTime: 1790001595894 keySize: -1 valueSize: 45 sequence: -1 headerKeys: [] payload: {"type":"TOPIC_RECORD","version":0,"data":{"name":"dian.facturacion.emitida","topicId":"BhprP0TDTqaIZAITef1jwQ"}}
+| offset: 48 CreateTime: 1790001595894 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":0,"topicId":"BhprP0TDTqaIZAITef1jwQ","replicas":[1,2,3],"isr":[1,2,3],"removingReplicas":[],"addingReplicas":[],"leader":1,"leaderEpoch":0,"partitionEpoch":0,"directories":["0YIX4hhHOZMwBKnogUa2ew","TAMkE5j4a1MzydLIFg_I-g","W1uWtlg5NOf47kWtX-oW4Q"]}}
+| offset: 49 CreateTime: 1790001595894 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":1,"topicId":"BhprP0TDTqaIZAITef1jwQ","replicas":[2,3,1],"isr":[2,3,1],"removingReplicas":[],"addingReplicas":[],"leader":2,"leaderEpoch":0,"partitionEpoch":0,"directories":["TAMkE5j4a1MzydLIFg_I-g","W1uWtlg5NOf47kWtX-oW4Q","0YIX4hhHOZMwBKnogUa2ew"]}}
+| offset: 50 CreateTime: 1790001595894 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":2,"topicId":"BhprP0TDTqaIZAITef1jwQ","replicas":[3,1,2],"isr":[3,1,2],"removingReplicas":[],"addingReplicas":[],"leader":3,"leaderEpoch":0,"partitionEpoch":0,"directories":["W1uWtlg5NOf47kWtX-oW4Q","0YIX4hhHOZMwBKnogUa2ew","TAMkE5j4a1MzydLIFg_I-g"]}}
+| offset: 51 CreateTime: 1790001595894 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":3,"topicId":"BhprP0TDTqaIZAITef1jwQ","replicas":[3,2,1],"isr":[3,2,1],"removingReplicas":[],"addingReplicas":[],"leader":3,"leaderEpoch":0,"partitionEpoch":0,"directories":["W1uWtlg5NOf47kWtX-oW4Q","TAMkE5j4a1MzydLIFg_I-g","0YIX4hhHOZMwBKnogUa2ew"]}}
+| offset: 52 CreateTime: 1790001595894 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":4,"topicId":"BhprP0TDTqaIZAITef1jwQ","replicas":[2,1,3],"isr":[2,1,3],"removingReplicas":[],"addingReplicas":[],"leader":2,"leaderEpoch":0,"partitionEpoch":0,"directories":["TAMkE5j4a1MzydLIFg_I-g","0YIX4hhHOZMwBKnogUa2ew","W1uWtlg5NOf47kWtX-oW4Q"]}}
+| offset: 53 CreateTime: 1790001595894 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":5,"topicId":"BhprP0TDTqaIZAITef1jwQ","replicas":[1,3,2],"isr":[1,3,2],"removingReplicas":[],"addingReplicas":[],"leader":1,"leaderEpoch":0,"partitionEpoch":0,"directories":["0YIX4hhHOZMwBKnogUa2ew","W1uWtlg5NOf47kWtX-oW4Q","TAMkE5j4a1MzydLIFg_I-g"]}}
+| offset: 61 CreateTime: 1790001599646 keySize: -1 valueSize: 48 sequence: -1 headerKeys: [] payload: {"type":"TOPIC_RECORD","version":0,"data":{"name":"dian.declaracion.presentada","topicId":"FqlERexLSf6Pd2eNKkbHZQ"}}
+| offset: 64 CreateTime: 1790001599646 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":0,"topicId":"FqlERexLSf6Pd2eNKkbHZQ","replicas":[2,3,1],"isr":[2,3,1],"removingReplicas":[],"addingReplicas":[],"leader":2,"leaderEpoch":0,"partitionEpoch":0,"directories":["TAMkE5j4a1MzydLIFg_I-g","W1uWtlg5NOf47kWtX-oW4Q","0YIX4hhHOZMwBKnogUa2ew"]}}
+| offset: 65 CreateTime: 1790001599646 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":1,"topicId":"FqlERexLSf6Pd2eNKkbHZQ","replicas":[3,1,2],"isr":[3,1,2],"removingReplicas":[],"addingReplicas":[],"leader":3,"leaderEpoch":0,"partitionEpoch":0,"directories":["W1uWtlg5NOf47kWtX-oW4Q","0YIX4hhHOZMwBKnogUa2ew","TAMkE5j4a1MzydLIFg_I-g"]}}
+| offset: 66 CreateTime: 1790001599646 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":2,"topicId":"FqlERexLSf6Pd2eNKkbHZQ","replicas":[1,2,3],"isr":[1,2,3],"removingReplicas":[],"addingReplicas":[],"leader":1,"leaderEpoch":0,"partitionEpoch":0,"directories":["0YIX4hhHOZMwBKnogUa2ew","TAMkE5j4a1MzydLIFg_I-g","W1uWtlg5NOf47kWtX-oW4Q"]}}
+| offset: 67 CreateTime: 1790001599646 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":3,"topicId":"FqlERexLSf6Pd2eNKkbHZQ","replicas":[2,1,3],"isr":[2,1,3],"removingReplicas":[],"addingReplicas":[],"leader":2,"leaderEpoch":0,"partitionEpoch":0,"directories":["TAMkE5j4a1MzydLIFg_I-g","0YIX4hhHOZMwBKnogUa2ew","W1uWtlg5NOf47kWtX-oW4Q"]}}
+| offset: 68 CreateTime: 1790001599646 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":4,"topicId":"FqlERexLSf6Pd2eNKkbHZQ","replicas":[1,3,2],"isr":[1,3,2],"removingReplicas":[],"addingReplicas":[],"leader":1,"leaderEpoch":0,"partitionEpoch":0,"directories":["0YIX4hhHOZMwBKnogUa2ew","W1uWtlg5NOf47kWtX-oW4Q","TAMkE5j4a1MzydLIFg_I-g"]}}
+| offset: 69 CreateTime: 1790001599646 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":5,"topicId":"FqlERexLSf6Pd2eNKkbHZQ","replicas":[3,2,1],"isr":[3,2,1],"removingReplicas":[],"addingReplicas":[],"leader":3,"leaderEpoch":0,"partitionEpoch":0,"directories":["W1uWtlg5NOf47kWtX-oW4Q","TAMkE5j4a1MzydLIFg_I-g","0YIX4hhHOZMwBKnogUa2ew"]}}
+| offset: 78 CreateTime: 1790001603620 keySize: -1 valueSize: 57 sequence: -1 headerKeys: [] payload: {"type":"TOPIC_RECORD","version":0,"data":{"name":"dian.aduanas.declaracion-importacion","topicId":"DSTbJm9FQE2VJe0kdS8UzQ"}}
+| offset: 80 CreateTime: 1790001603620 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":0,"topicId":"DSTbJm9FQE2VJe0kdS8UzQ","replicas":[2,3,1],"isr":[2,3,1],"removingReplicas":[],"addingReplicas":[],"leader":2,"leaderEpoch":0,"partitionEpoch":0,"directories":["TAMkE5j4a1MzydLIFg_I-g","W1uWtlg5NOf47kWtX-oW4Q","0YIX4hhHOZMwBKnogUa2ew"]}}
+| offset: 81 CreateTime: 1790001603620 keySize: -1 valueSize: 113 sequence: -1 headerKeys: [] payload: {"type":"PARTITION_RECORD","version":1,"data":{"partitionId":1,"topicId":"DSTbJm9FQE2VJe0kdS8UzQ","replicas":[3,1,2],"isr":[3,1,2],"removingReplicas":[],"addingReplicas":[],"leader":3,"leaderEpoch":0,"partitionEpoch":0,"directories":["W1uWtlg5NOf47kWtX-oW4Q","0YIX4hhHOZMwBKnogUa2ew","TAMkE5j4a1MzydLIFg_I-g"]}}
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ EQUIPO=equipo01
+TOPIC=$EQUIPO.lab02.declaracion.presentada
+kt --create --topic "$TOPIC" --partitions 3 --replication-factor 3
+docker exec broker1 /opt/kafka/bin/kafka-dump-log.sh --cluster-metadata-decoder \
+  --files /var/lib/kafka/data/__cluster_metadata-0/00000000000000000000.log | grep -A3 "$TOPIC" | head -20
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic equipo01.lab02.declaracion.presentada.
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ CONTROLADOR=3
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ BROKER_VIVO=1
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ date +%T
+14:58:48
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker stop broker$CONTROLADOR
+broker3
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker$BROKER_VIVO /opt/kafka/bin/kafka-metadata-quorum.sh \
+> docker exec broker$BROKER_VIVO /opt/kafka/bin/kafka-metadata-quorum.sh \
+  --bootstrap-server broker$BROKER_VIVO:19092 describe --status
+^[[A^[[Ausage: kafka-metadata-quorum [-h] [--command-config COMMAND_CONFIG]
+                             (--bootstrap-server BOOTSTRAP_SERVER |
+                             --bootstrap-controller BOOTSTRAP_CONTROLLER)
+                             {describe,add-controller,remove-controller}
+                             ...
+kafka-metadata-quorum:  error:  invalid   choice:   'docker'  (choose  from
+'describe', 'add-controller', 'remove-controller')
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker$BROKER_VIVO /opt/kafka/bin/kafka-metadata-quorum.sh \
+  --bootstrap-server broker$BROKER_VIVO:19092 describe --status
+ClusterId:              dian-kafka-lab-2026
+LeaderId:               1
+LeaderEpoch:            17
+HighWatermark:          46429
+MaxFollowerLag:         46430
+MaxFollowerLagTimeMs:   -1
+CurrentVoters:          [{"id": 1, "directoryId": null, "endpoints": ["CONTROLLER://broker1:9093"]}, {"id": 2, "directoryId": null, "endpoints": ["CONTROLLER://broker2:9093"]}, {"id": 3, "directoryId": null, "endpoints": ["CONTROLLER://broker3:9093"]}]
+CurrentObservers:       []
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker$BROKER_VIVO /opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server broker$BROKER_VIVO:19092 --describe \
+  --topic "$TOPIC"
+Topic: equipo01.lab02.declaracion.presentada    TopicId: SS7IxNePQR2FueOt_L5I5g PartitionCount: 3       ReplicationFactor: 3    Configs: min.insync.replicas=2,unclean.leader.election.enable=false
+        Topic: equipo01.lab02.declaracion.presentada    Partition: 0    Leader: 1       Replicas: 1,2,3 Isr: 1,2        Elr:    LastKnownElr: 
+        Topic: equipo01.lab02.declaracion.presentada    Partition: 1    Leader: 2       Replicas: 2,3,1 Isr: 2,1        Elr:    LastKnownElr: 
+        Topic: equipo01.lab02.declaracion.presentada    Partition: 2    Leader: 1       Replicas: 3,1,2 Isr: 1,2        Elr:    LastKnownElr: 
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker start brocker$CONTROLADOR
+Error response from daemon: No such container: brocker3
+failed to start containers: brocker3
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker start broker$CONTROLADOR
+broker3
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ sleep 20
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kq describe --replication
+NodeId  DirectoryId             LogEndOffset    Lag     LastFetchTimestamp      LastCaughtUpTimestamp   Status  
+1       AAAAAAAAAAAAAAAAAAAAAA  47290           0       1792508850978           1792508850978           Leader  
+2       AAAAAAAAAAAAAAAAAAAAAA  47290           0       1792508850485           1792508850485           Follower
+3       AAAAAAAAAAAAAAAAAAAAAA  47290           0       1792508850486           1792508850486           Follower
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kq describe --status
+ClusterId:              dian-kafka-lab-2026
+LeaderId:               1
+LeaderEpoch:            17
+HighWatermark:          47359
+MaxFollowerLag:         0
+MaxFollowerLagTimeMs:   0
+CurrentVoters:          [{"id": 1, "directoryId": null, "endpoints": ["CONTROLLER://broker1:9093"]}, {"id": 2, "directoryId": null, "endpoints": ["CONTROLLER://broker2:9093"]}, {"id": 3, "directoryId": null, "endpoints": ["CONTROLLER://broker3:9093"]}]
+CurrentObservers:       []
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ printf "830001|{\"nit\":\"830001\",\"formulario\":\"110\",\"periodo\":\"2026-08\"}\n830001|{\"nit\":\"830001\",\"formulario\":\"300\",\"periodo\":\"2026-08\"}\n900123|{\"nit\":\"900123\",\"formulario\":\"110\",\"periodo\":\"2026-08\"}\n" | \
+docker exec -i broker1 /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server broker1:19092 \
+  --topic "$TOPIC" --property parse.key=true --property key.separator="|"
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker1 /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server broker1:19092 \
+  --topic "$TOPIC" --from-beginning --timeout-ms 8000 \
+  --property print.key=true --property print.partition=true --property print.offset=true 2>/dev/null
+Partition:1     Offset:0        900123  {"nit":"900123","formulario":"110","periodo":"2026-08"}
+Partition:2     Offset:0        830001  {"nit":"830001","formulario":"110","periodo":"2026-08"}
+Partition:2     Offset:1        830001  {"nit":"830001","formulario":"300","periodo":"2026-08"}
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker1 /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server broker1:19092 \
+  --topic "$TOPIC" --from-beginning --group "${EQUIPO}-lab02-lector" --timeout-ms 8000 2>/dev/null >/dev/null
+docker exec broker1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker1:19092 --describe --group "${EQUIPO}-lab02-lector"
+
+Consumer group 'equipo01-lab02-lector' has no active members.
+
+GROUP                 TOPIC                                 PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+equipo01-lab02-lector equipo01.lab02.declaracion.presentada 0          0               0               0               -               -               -
+equipo01-lab02-lector equipo01.lab02.declaracion.presentada 1          1               1               0               -               -               -
+equipo01-lab02-lector equipo01.lab02.declaracion.presentada 2          2               2               0               -               -               -estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kt --list | gkt --list | grep consumer_offsets
+__consumer_offsets
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ 
