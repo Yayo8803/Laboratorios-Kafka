@@ -1,0 +1,220 @@
+estudiante@i-06a2b638ad5637ae8:/home$ cd ~/kafka-dian/entorno
+pwd
+ls
+/home/estudiante/kafka-dian/entorno
+alertas.yml   connect-distributed.properties   docker-compose.etapaC.yml  docker-compose.etapaF.yml    gen-client-configs.sh  minio.sh        pull-images.sh          spark-defaults.conf
+check-env.sh  docker-compose-lab-kafka.yml     docker-compose.etapaD.yml  docker-compose.override.yml  grafana                plugins         secrets
+connect       docker-compose.etapaC-libre.yml  docker-compose.etapaE.yml  gen-certs.sh                 jmx                    prometheus.yml  seed-declaraciones.sql
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ EQUIPO=equipo01                              
+TOPIC=$EQUIPO.lab04.auditoria.acceso
+alias kt='docker exec broker1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker1:19092'
+alias kc='docker exec broker1 /opt/kafka/bin/kafka-configs.sh --bootstrap-server broker1:19092'
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ cd ~/kafka-dian/entorno
+docker compose -f docker-compose-lab-kafka.yml up -d
+sleep 45
+docker compose -f docker-compose-lab-kafka.yml ps
+[+] up 5/5
+ ✔ Container broker3          Healthy                                                                                                                                                                                45.7s
+ ✔ Container broker1          Healthy                                                                                                                                                                                46.2s
+ ✔ Container broker2          Healthy                                                                                                                                                                                46.2s
+ ✔ Container kafka-ui         Started                                                                                                                                                                                 0.3s
+ ✔ Container bootstrap-topics Started                                                                                                                                                                                 0.2s
+NAME       IMAGE                            COMMAND                  SERVICE    CREATED       STATUS                        PORTS
+broker1    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker1    4 weeks ago   Up About a minute (healthy)   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp, 0.0.0.0:9101->9101/tcp, [::]:9101->9101/tcp
+broker2    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker2    4 weeks ago   Up About a minute (healthy)   0.0.0.0:9094->9094/tcp, [::]:9094->9094/tcp, 9092/tcp, 0.0.0.0:9102->9102/tcp, [::]:9102->9102/tcp
+broker3    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker3    4 weeks ago   Up About a minute (healthy)   0.0.0.0:9096->9096/tcp, [::]:9096->9096/tcp, 9092/tcp, 0.0.0.0:9103->9103/tcp, [::]:9103->9103/tcp
+kafka-ui   ghcr.io/kafbat/kafka-ui:v1.1.0   "/bin/sh -c 'java --…"   kafka-ui   2 days ago    Up About a minute             127.0.0.1:18085->8080/tcp
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ EQUIPO=equipo01
+TOPIC=$EQUIPO.lab04.auditoria.acceso
+alias kt='docker exec broker1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker1:19092'
+alias kc='docker exec broker1 /opt/kafka/bin/kafka-configs.sh --bootstrap-server broker1:19092'
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kt --create --topic "$TOPIC" --partitions 6 --replication-factor 3 \
+   --config cleanup.policy=compact --config min.insync.replicas=2 --config segment.bytes=1048576
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic equipo01.lab04.auditoria.acceso.
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kt --describe --topic "$TOPIC" | head -1
+Topic: equipo01.lab04.auditoria.acceso  TopicId: WdFgoFiqShiy8snE9s0yFQ PartitionCount: 6       ReplicationFactor: 3    Configs: min.insync.replicas=2,cleanup.policy=compact,segment.bytes=1048576,unclean.leader.election.enable=false
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kc --alter --entity-type topics --entity-name "$TOPIC" --add-config delete.retention.ms=60000,min.compaction.lag.ms=10000
+Completed updating config for topic equipo01.lab04.auditoria.acceso.
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kc --describe --entity-type topics --entity-name "$TOPIC"
+Dynamic configs for topic equipo01.lab04.auditoria.acceso are:
+  cleanup.policy=compact sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:cleanup.policy=compact, DEFAULT_CONFIG:log.cleanup.policy=delete}
+  delete.retention.ms=60000 sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:delete.retention.ms=60000, DEFAULT_CONFIG:log.cleaner.delete.retention.ms=86400000}
+  min.compaction.lag.ms=10000 sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:min.compaction.lag.ms=10000, DEFAULT_CONFIG:log.cleaner.min.compaction.lag.ms=0}
+  min.insync.replicas=2 sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:min.insync.replicas=2, STATIC_BROKER_CONFIG:min.insync.replicas=2, DEFAULT_CONFIG:min.insync.replicas=1}
+  segment.bytes=1048576 sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:segment.bytes=1048576, DEFAULT_CONFIG:log.segment.bytes=1073741824}
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kc --alter --entity-type topics --entity-name "$TOPIC" --delete-config min.compaction.lag.ms
+Completed updating config for topic equipo01.lab04.auditoria.acceso.
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kc --describe --entity-type topics --entity-name "$TOPIC"
+Dynamic configs for topic equipo01.lab04.auditoria.acceso are:
+  cleanup.policy=compact sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:cleanup.policy=compact, DEFAULT_CONFIG:log.cleanup.policy=delete}
+  delete.retention.ms=60000 sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:delete.retention.ms=60000, DEFAULT_CONFIG:log.cleaner.delete.retention.ms=86400000}
+  min.insync.replicas=2 sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:min.insync.replicas=2, STATIC_BROKER_CONFIG:min.insync.replicas=2, DEFAULT_CONFIG:min.insync.replicas=1}
+  segment.bytes=1048576 sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:segment.bytes=1048576, DEFAULT_CONFIG:log.segment.bytes=1073741824}
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kc --alter --entity-type clients --entity-name gen-facturacion --add-config producer_byte_rate=1048576
+Completed updating config for client gen-facturacion.
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kc --describe --entity-type clients --entity-name gen-facturacion
+Quota configs for client-id 'gen-facturacion' are producer_byte_rate=1048576.0
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 codigo/gen_eventos.py --topic dian.facturacion.emitida --n 20000
+python3: can't open file '/home/estudiante/kafka-dian/entorno/codigo/gen_eventos.py': [Errno 2] No such file or directory
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ cd ~/kafka-dian
+python3 codigo/gen_eventos.py --topic dian.facturacion.emitida --n 20000
+Traceback (most recent call last):
+  File "/home/estudiante/kafka-dian/codigo/gen_eventos.py", line 9, in <module>
+    from confluent_kafka import Producer
+ModuleNotFoundError: No module named 'confluent_kafka'
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ python3 -m pip install --user confluent-kafka
+error: externally-managed-environment
+
+× This environment is externally managed
+╰─> To install Python packages system-wide, try apt install
+    python3-xyz, where xyz is the package you are trying to
+    install.
+    
+    If you wish to install a non-Debian-packaged Python package,
+    create a virtual environment using python3 -m venv path/to/venv.
+    Then use path/to/venv/bin/python and path/to/venv/bin/pip. Make
+    sure you have python3-full installed.
+    
+    If you wish to install a non-Debian packaged Python application,
+    it may be easiest to use pipx install xyz, which will manage a
+    virtual environment for you. Make sure you have pipx installed.
+    
+    See /usr/share/doc/python3.12/README.venv for more information.
+
+note: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.
+hint: See PEP 668 for the detailed specification.
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ python3 -m venv .venv
+source .venv/bin/activate
+pip install confluent-kafka
+Collecting confluent-kafka
+  Using cached confluent_kafka-2.16.0-cp312-cp312-manylinux_2_28_x86_64.whl.metadata (38 kB)
+Using cached confluent_kafka-2.16.0-cp312-cp312-manylinux_2_28_x86_64.whl (5.0 MB)
+Installing collected packages: confluent-kafka
+Successfully installed confluent-kafka-2.16.0
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ cd ~/kafka-dian/entorno
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 -m venv .venv
+source .venv/bin/activate
+pip install confluent-kafka
+Collecting confluent-kafka
+  Using cached confluent_kafka-2.16.0-cp312-cp312-manylinux_2_28_x86_64.whl.metadata (38 kB)
+Using cached confluent_kafka-2.16.0-cp312-cp312-manylinux_2_28_x86_64.whl (5.0 MB)
+Installing collected packages: confluent-kafka
+Successfully installed confluent-kafka-2.16.0
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 codigo/gen_eventos.py --topic dian.facturacion.emitida --n 20000
+python3: can't open file '/home/estudiante/kafka-dian/entorno/codigo/gen_eventos.py': [Errno 2] No such file or directory
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 gen_eventos.py --topic dian.facturacion.emitida --n 20000
+python3: can't open file '/home/estudiante/kafka-dian/entorno/gen_eventos.py': [Errno 2] No such file or directory
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 gen_eventos.py --topic dian.facturacion.emitida --n 20000
+python3: can't open file '/home/estudiante/kafka-dian/entorno/gen_eventos.py': [Errno 2] No such file or directory
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 entorno/gen_eventos.py --topic dian.facturacion.emitida --n 20000  
+python3: can't open file '/home/estudiante/kafka-dian/entorno/entorno/gen_eventos.py': [Errno 2] No such file or directory
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 /gen_eventos.py --topic dian.facturacion.emitida --n 20000  
+python3: can't open file '/gen_eventos.py': [Errno 2] No such file or directory
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ python3 gen_eventos.py --topic dian.facturacion.emitida --n 20000  
+python3: can't open file '/home/estudiante/kafka-dian/entorno/gen_eventos.py': [Errno 2] No such file or directory
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ ls -l /home/est1/kafka-dian/entorno/gen_eventos.py
+time python3 /home/est1/kafka-dian/entorno/gen_eventos.py --topic dian.facturacion.emitida --n 20000
+time python3 /home/est1/kafka-dian/entorno/gen_eventos.py --topic dian.facturacion.emitida --n 20000 --client-id sin-cuota
+-rw-rw----+ 1 estudiante laboratorio 2963 Oct 15 14:30 /home/est1/kafka-dian/entorno/gen_eventos.py
+enviados: 20000
+
+real    0m2.661s
+user    0m1.411s
+sys     0m0.149s
+enviados: 20000
+
+real    0m2.074s
+user    0m1.442s
+sys     0m0.129s
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kc --alter --entity-type clients --entity-name gen-facturacion --delete-config producer_byte_rate
+Completed updating config for client gen-facturacion.
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker1 /opt/kafka/bin/kafka-log-dirs.sh --bootstrap-server broker1:19092 --describe --broker-list 1,2,3 --topic-list dian.facturacion.emitida | tail -1 | python3 -m json.tool | grep -E '"partition"|"size"' | head -12
+                            "partition": "dian.facturacion.emitida-5",
+                            "size": 723196,
+                            "partition": "dian.facturacion.emitida-4",
+                            "size": 740577,
+                            "partition": "dian.facturacion.emitida-1",
+                            "size": 796265,
+                            "partition": "dian.facturacion.emitida-0",
+                            "size": 866613,
+                            "partition": "dian.facturacion.emitida-3",
+                            "size": 845388,
+                            "partition": "dian.facturacion.emitida-2",
+                            "size": 803286,
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker1 /opt/kafka/bin/kafka-log-dirs.sh --bootstrap-server broker1:19092 \
+  --describe --broker-list 1,2,3 --topic-list dian.facturacion.emitida | tail -1 | \
+  python3 -c "import json,sys; d=json.load(sys.stdin); [print('broker', b['broker'], sum(p['size'] for ld in b['logDirs'] for p in ld['partitions']), 'bytes') for b in d['brokers']]"
+broker 1 4775325 bytes
+broker 2 4775325 bytes
+broker 3 4775325 bytes
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ echo "x" | docker exec -i broker1 /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server broker1:19092 --topic topic.que.no.existe
+kt --list | grep "no.existe" || echo "no se creó: correcto"
+[2026-10-22 15:40:14,570] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 1 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:14,693] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 7 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:14,885] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 8 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:15,360] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 9 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:16,278] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 10 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:17,282] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 11 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:18,265] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 12 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:19,268] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 13 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:20,271] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 14 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:21,185] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 15 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:22,188] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 16 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:23,191] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 17 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:24,193] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 18 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:25,195] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 19 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:26,198] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 20 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:27,166] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 21 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:27,999] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 22 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:28,956] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 23 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:29,958] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 24 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:30,964] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 25 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:31,965] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 26 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:32,886] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 27 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:33,889] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 28 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:34,891] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 29 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:35,894] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 30 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:36,895] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 31 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:37,898] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 32 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:38,900] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 33 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:39,835] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 34 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:40,832] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 35 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:41,834] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 36 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:42,837] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 37 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:43,839] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 38 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:44,840] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 39 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:45,842] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 40 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:46,845] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 41 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:47,847] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 42 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:48,849] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 43 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:49,850] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 44 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:50,852] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 45 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:51,853] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 46 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:52,862] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 47 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:53,864] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 48 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:54,865] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 49 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:55,867] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 50 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:56,869] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 51 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:57,810] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 52 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:58,750] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 53 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:40:59,752] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 54 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:00,753] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 55 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:01,725] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 56 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:02,728] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 57 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:03,730] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 58 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:04,710] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 59 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:05,712] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 60 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:06,657] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 61 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:07,660] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 62 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:08,663] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 63 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:09,666] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 64 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:10,668] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 65 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:11,602] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 66 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:12,605] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 67 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:13,607] WARN [Producer clientId=console-producer] The metadata response from the cluster reported a recoverable issue with correlation id 68 : {topic.que.no.existe=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+[2026-10-22 15:41:13,830] ERROR Error when sending message to topic topic.que.no.existe with key: null, value: 1 bytes with error: (org.apache.kafka.clients.producer.internals.ErrorLoggingCallback)
+org.apache.kafka.common.errors.TimeoutException: Topic topic.que.no.existe not present in metadata after 60000 ms.
+Caused by: org.apache.kafka.common.errors.UnknownTopicOrPartitionException: This server does not host this topic-partition.
+no se creó: correcto
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ 
