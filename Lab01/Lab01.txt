@@ -1,0 +1,76 @@
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ cd ~/kafka-dian/entorno
+docker compose -f docker-compose-lab-kafka.yml up -d
+EQUIPO=equipo01
+TOPIC=$EQUIPO.lab01.facturacion.emitida
+KB=broker1
+kt() { docker exec "$KB" /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$KB":19092 "$@"; }
+[+] up 5/5
+ ✔ Container broker3          Healthy                                                                                                                                                                                 0.6s
+ ✔ Container kafka-ui         Running                                                                                                                                                                                 0.0s
+ ✔ Container broker1          Healthy                                                                                                                                                                                 0.6s
+ ✔ Container broker2          Healthy                                                                                                                                                                                 0.6s
+ ✔ Container bootstrap-topics Started                                                                                                                                                                                 0.2s
+bash: syntax error near unexpected token `('
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker1 /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server broker1:19092 | grep -E "^broker[0-9]"
+broker1:19092 (id: 1 rack: null) -> (
+broker2:19092 (id: 2 rack: null) -> (
+broker3:19092 (id: 3 rack: null) -> (
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kt --create --topic "$TOPIC" --partitions 3 --replication-factor 3 --config min.insync.replicas=2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic equipo01.lab01.facturacion.emitida.
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ kt --describe --topic "$TOPIC"
+Topic: equipo01.lab01.facturacion.emitida       TopicId: YQInXdMAQT2YcHEOEtST-w PartitionCount: 3       ReplicationFactor: 3    Configs: min.insync.replicas=2,unclean.leader.election.enable=false
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 0    Leader: 2       Replicas: 2,3,1 Isr: 2,3,1      Elr:    LastKnownElr: 
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 1    Leader: 3       Replicas: 3,1,2 Isr: 3,1,2      Elr:    LastKnownElr: 
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 2    Leader: 1       Replicas: 1,2,3 Isr: 1,2,3      Elr:    LastKnownElr: 
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ source /home/est1/kafka-dian/entorno/.venv/bin/activate 2>/dev/null || source ~/kafka-dian/.venv/bin/activate
+python3 /home/est1/kafka-dian/entorno/gen_eventos.py --topic "$TOPIC" --n 100
+enviados: 100
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec brokerN ls -lh /var/lib/kafka/data/${TOPIC}-0/
+docker exec brokerN /opt/kafka/bin/kafka-dump-log.sh --print-data-log --files /var/lib/kafka/data/${TOPIC}-0/00000000000000000000.log | head -20
+Error response from daemon: No such container: brokerN
+Error response from daemon: No such container: brokerN
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker exec broker3 /opt/kafka/bin/kafka-dump-log.sh --print-data-log --files /var/lib/kafka/data/${TOPIC}-0/00000000000000000000.log | head -20
+Dumping /var/lib/kafka/data/equipo01.lab01.facturacion.emitida-0/00000000000000000000.log
+Log starting offset: 0
+baseOffset: 0 lastOffset: 25 count: 26 baseSequence: -1 lastSequence: -1 producerId: -1 producerEpoch: -1 partitionLeaderEpoch: 0 isTransactional: false isControl: false deleteHorizonMs: OptionalLong.empty position: 0 CreateTime: 1792685521697 size: 3335 magic: 2 compresscodec: lz4 crc: 1054322936 isvalid: true
+| offset: 0 CreateTime: 1792685521690 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 835538059 payload: {"id_evento": "46845d50-69ea-4c34-875b-a5226a4bef36", "nit_emisor": "835538059", "cufe": "002b482076554dd89ecd0cc588be2c3c", "valor_total": 13240.36, "fecha_emision": "2026-10-22T16:12:01.690053+00:00", "estado": "VALIDADA"}
+| offset: 1 CreateTime: 1792685521690 keySize: 9 valueSize: 225 sequence: -1 headerKeys: [] key: 898884705 payload: {"id_evento": "ac9c0dd1-b05f-47b2-9e18-551691fa4a04", "nit_emisor": "898884705", "cufe": "9d20314c488346c2b95bcbe0eb1ed598", "valor_total": 119903.73, "fecha_emision": "2026-10-22T16:12:01.690179+00:00", "estado": "VALIDADA"}
+| offset: 2 CreateTime: 1792685521690 keySize: 9 valueSize: 225 sequence: -1 headerKeys: [] key: 814159806 payload: {"id_evento": "5a5cbfde-e469-4143-b58b-a7daa31608cb", "nit_emisor": "814159806", "cufe": "3bc88f3da876425f8f3cc9b4d7d38fea", "valor_total": 494552.45, "fecha_emision": "2026-10-22T16:12:01.690364+00:00", "estado": "VALIDADA"}
+| offset: 3 CreateTime: 1792685521690 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 896709338 payload: {"id_evento": "2302c5ef-a1e1-4e01-a919-1f9388c84360", "nit_emisor": "896709338", "cufe": "f05764f20acc4efaa8478ed3af3e89c8", "valor_total": 39564.83, "fecha_emision": "2026-10-22T16:12:01.690495+00:00", "estado": "VALIDADA"}
+| offset: 4 CreateTime: 1792685521690 keySize: 9 valueSize: 225 sequence: -1 headerKeys: [] key: 878724687 payload: {"id_evento": "397f8e3d-499d-428a-bb4c-c5c709e0313b", "nit_emisor": "878724687", "cufe": "e4b3a0ee570b4a37b8eb7e4416d141b7", "valor_total": 450176.88, "fecha_emision": "2026-10-22T16:12:01.690694+00:00", "estado": "VALIDADA"}
+| offset: 5 CreateTime: 1792685521690 keySize: 9 valueSize: 226 sequence: -1 headerKeys: [] key: 882552648 payload: {"id_evento": "8d1f2011-e180-40f5-84cd-2d31fa1f52f9", "nit_emisor": "882552648", "cufe": "ee4fc808837c4a05b826d2606e30c52a", "valor_total": 2509235.42, "fecha_emision": "2026-10-22T16:12:01.690808+00:00", "estado": "VALIDADA"}
+| offset: 6 CreateTime: 1792685521690 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 841834536 payload: {"id_evento": "8f4b473c-b1c7-41f8-8c65-7420d03c8392", "nit_emisor": "841834536", "cufe": "fac8225bcf66407d9a349df7c79a52dc", "valor_total": 85616.04, "fecha_emision": "2026-10-22T16:12:01.690853+00:00", "estado": "VALIDADA"}
+| offset: 7 CreateTime: 1792685521691 keySize: 9 valueSize: 226 sequence: -1 headerKeys: [] key: 841396674 payload: {"id_evento": "c9eb2c13-ec09-4127-be9a-90c06ddd1a5c", "nit_emisor": "841396674", "cufe": "fd52cf448b2b4af7a16a030ff50bfd49", "valor_total": 1328459.87, "fecha_emision": "2026-10-22T16:12:01.691090+00:00", "estado": "VALIDADA"}
+| offset: 8 CreateTime: 1792685521691 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 952639296 payload: {"id_evento": "6b079fad-ee94-42e9-8e04-72a32619167a", "nit_emisor": "952639296", "cufe": "0d1dff34ac644bacbd41434a3d9bc78c", "valor_total": 109386.6, "fecha_emision": "2026-10-22T16:12:01.691262+00:00", "estado": "VALIDADA"}
+| offset: 9 CreateTime: 1792685521691 keySize: 9 valueSize: 225 sequence: -1 headerKeys: [] key: 953913051 payload: {"id_evento": "0fe3be17-cbd9-4e93-89ba-cf3d01f005ea", "nit_emisor": "953913051", "cufe": "6febf92266ed4127a46f69ee94dd345b", "valor_total": 123620.58, "fecha_emision": "2026-10-22T16:12:01.691390+00:00", "estado": "VALIDADA"}
+| offset: 10 CreateTime: 1792685521691 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 864392898 payload: {"id_evento": "e54e3cfc-d5f2-4908-96d6-f4735726a0b7", "nit_emisor": "864392898", "cufe": "022509d77c3a414a8aa66903a393775a", "valor_total": 50849.16, "fecha_emision": "2026-10-22T16:12:01.691464+00:00", "estado": "VALIDADA"}
+| offset: 11 CreateTime: 1792685521691 keySize: 9 valueSize: 225 sequence: -1 headerKeys: [] key: 878865858 payload: {"id_evento": "236b45bb-cad6-4f65-a4d5-a389708d7561", "nit_emisor": "878865858", "cufe": "23c4eff7bf0e4ae59ad17851020ad246", "valor_total": 737441.24, "fecha_emision": "2026-10-22T16:12:01.691688+00:00", "estado": "VALIDADA"}
+| offset: 12 CreateTime: 1792685521691 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 914582571 payload: {"id_evento": "cb23deb4-351a-4764-9080-5b3ad3d7154f", "nit_emisor": "914582571", "cufe": "3e20cfce18ca4560af946ad5e1803a96", "valor_total": 36998.82, "fecha_emision": "2026-10-22T16:12:01.691761+00:00", "estado": "VALIDADA"}
+| offset: 13 CreateTime: 1792685521691 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 945646473 payload: {"id_evento": "a0aad1e4-0b3e-4b6f-9bc8-314bb7e43e8e", "nit_emisor": "945646473", "cufe": "472e455a239b47fe9e4d28bfc73dbf10", "valor_total": 82899.45, "fecha_emision": "2026-10-22T16:12:01.691817+00:00", "estado": "VALIDADA"}
+| offset: 14 CreateTime: 1792685521692 keySize: 9 valueSize: 225 sequence: -1 headerKeys: [] key: 858531383 payload: {"id_evento": "0b9c47bd-ce93-43fe-a788-05506d6a192f", "nit_emisor": "858531383", "cufe": "1a808515bdf94ace97feddd538049af3", "valor_total": 153863.67, "fecha_emision": "2026-10-22T16:12:01.691986+00:00", "estado": "VALIDADA"}
+| offset: 15 CreateTime: 1792685521692 keySize: 9 valueSize: 225 sequence: -1 headerKeys: [] key: 945124818 payload: {"id_evento": "4b4c67e7-e73b-456b-be20-3ac94f814b1d", "nit_emisor": "945124818", "cufe": "cdccd47d4a57430da0e46fffc6cdbd78", "valor_total": 132777.58, "fecha_emision": "2026-10-22T16:12:01.692200+00:00", "estado": "VALIDADA"}
+| offset: 16 CreateTime: 1792685521692 keySize: 9 valueSize: 224 sequence: -1 headerKeys: [] key: 878459243 payload: {"id_evento": "085f8f72-a8cf-4658-a34a-39628e8e3977", "nit_emisor": "878459243", "cufe": "88ef3314b9654d6c826c79cb15d7c6a7", "valor_total": 26892.81, "fecha_emision": "2026-10-22T16:12:01.692263+00:00", "estado": "VALIDADA"}
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ docker stop broker3
+sleep 10
+KB=broker2                      # solo si el que apagaste fue broker1
+kt --describe --topic "$TOPIC"  # partición 0: nuevo líder e ISR de 2
+python3 /home/est1/kafka-dian/entorno/gen_eventos.py --topic "$TOPIC" --n 10   # debe aceptar
+docker start broker3
+sleep 20
+kt --describe --topic "$TOPIC"  # ISR de vuelta a 3
+docker exec $KB /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server $KB:19092 \
+  --topic "$TOPIC" --from-beginning --timeout-ms 10000 2>/dev/null | wc -l   # debe dar 110
+broker3
+Topic: equipo01.lab01.facturacion.emitida       TopicId: YQInXdMAQT2YcHEOEtST-w PartitionCount: 3       ReplicationFactor: 3    Configs: min.insync.replicas=2,unclean.leader.election.enable=false
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 0    Leader: 2       Replicas: 2,3,1 Isr: 2,1        Elr:    LastKnownElr: 
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 1    Leader: 1       Replicas: 3,1,2 Isr: 1,2        Elr:    LastKnownElr: 
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 2    Leader: 1       Replicas: 1,2,3 Isr: 1,2        Elr:    LastKnownElr: 
+enviados: 10
+broker3
+Topic: equipo01.lab01.facturacion.emitida       TopicId: YQInXdMAQT2YcHEOEtST-w PartitionCount: 3       ReplicationFactor: 3    Configs: min.insync.replicas=2,unclean.leader.election.enable=false
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 0    Leader: 2       Replicas: 2,3,1 Isr: 2,1,3      Elr:    LastKnownElr: 
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 1    Leader: 1       Replicas: 3,1,2 Isr: 1,2,3      Elr:    LastKnownElr: 
+        Topic: equipo01.lab01.facturacion.emitida       Partition: 2    Leader: 1       Replicas: 1,2,3 Isr: 1,2,3      Elr:    LastKnownElr: 
+130
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ 
