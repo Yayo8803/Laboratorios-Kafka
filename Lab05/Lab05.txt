@@ -1,0 +1,217 @@
+estudiante@i-06a2b638ad5637ae8:/home$ cd ~/kafka-dian/entorno
+docker compose -f docker-compose-lab-kafka.yml up -d
+sleep 45
+docker compose -f docker-compose-lab-kafka.yml ps
+[+] up 5/5
+ ✔ Container broker1          Healthy                                                                                                                                                                                45.6s
+ ✔ Container broker2          Healthy                                                                                                                                                                                45.6s
+ ✔ Container broker3          Healthy                                                                                                                                                                                46.1s
+ ✔ Container kafka-ui         Started                                                                                                                                                                                 0.3s
+ ✔ Container bootstrap-topics Started                                                                                                                                                                                 0.2s
+NAME       IMAGE                            COMMAND                  SERVICE    CREATED       STATUS                        PORTS
+broker1    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker1    5 weeks ago   Up About a minute (healthy)   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp, 0.0.0.0:9101->9101/tcp, [::]:9101->9101/tcp
+broker2    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker2    5 weeks ago   Up About a minute (healthy)   0.0.0.0:9094->9094/tcp, [::]:9094->9094/tcp, 9092/tcp, 0.0.0.0:9102->9102/tcp, [::]:9102->9102/tcp
+broker3    apache/kafka:3.9.0               "/__cacert_entrypoin…"   broker3    5 weeks ago   Up About a minute (healthy)   0.0.0.0:9096->9096/tcp, [::]:9096->9096/tcp, 9092/tcp, 0.0.0.0:9103->9103/tcp, [::]:9103->9103/tcp
+kafka-ui   ghcr.io/kafbat/kafka-ui:v1.1.0   "/bin/sh -c 'java --…"   kafka-ui   7 days ago    Up About a minute             127.0.0.1:18085->8080/tcp
+estudiante@i-06a2b638ad5637ae8:~/kafka-dian/entorno$ cd ~/kafka-dian
+source .venv/bin/activate
+EQUIPO=equipo01
+TOPIC=$EQUIPO.lab05.facturacion.emitida
+docker exec broker1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker1:19092 \
+  --create --topic "$TOPIC" --partitions 6 --replication-factor 3 --config min.insync.replicas=2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic equipo01.lab05.facturacion.emitida.
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ ls codigo/
+grep -n "TODO" codigo/productor_facturacion.py
+acls-consumidor-grupo.sh   acls-productor.sh              conector-jdbc-source.json  consumidor_facturacion.py       declaracion-presentada-v2.avsc  productor_facturacion.py
+acls-consumidor-topic.sh   bench.py                       conector-s3-sink.json      cuota-analitica.sh              gen_eventos.py                  spark_kafka_a_delta.py
+acls-minimo-privilegio.sh  conector-debezium-source.json  consumidor_avro.py         declaracion-presentada-v1.avsc  productor_avro.py               streams_conteo_por_nit.py
+3:Complete las secciones marcadas con TODO. Uso: python3 productor_facturacion.py --acks all --linger 20 --compression lz4 --n 5000"""
+14:    """Callback de entrega. TODO (paso 4): distinguir errores reintentables de no reintentables
+40:        # TODO (paso 1): agregue batch.size y delivery.timeout.ms y justifique los valores en el informe
+49:        # TODO (paso 1): la clave debe ser el NIT para conservar el orden por contribuyente
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ cat -n codigo/productor_facturacion.py
+     1  #!/usr/bin/env python3
+     2  """Laboratorio 05 - Esqueleto del productor de eventos de facturación.
+     3  Complete las secciones marcadas con TODO. Uso: python3 productor_facturacion.py --acks all --linger 20 --compression lz4 --n 5000"""
+     4  import argparse, json, time, uuid, random
+     5  from confluent_kafka import Producer, KafkaError
+     6
+     7  def construir_evento():
+     8      nit = f"9{random.randint(10000000, 99999999)}"
+     9      return nit, {"id_evento": str(uuid.uuid4()), "nit_emisor": nit, "cufe": uuid.uuid4().hex,
+    10                   "valor_total": round(random.uniform(10000, 5000000), 2), "estado": "VALIDADA"}
+    11
+    12  errores = 0
+    13  def entregado(err, msg):
+    14      """Callback de entrega. TODO (paso 4): distinguir errores reintentables de no reintentables
+    15      y registrar partición y offset en los envíos exitosos."""
+    16      global errores
+    17      if err is not None:
+    18          errores += 1
+    19          print(f"[ERROR] clave={msg.key()} codigo={err.code()} reintentable={err.retriable()} -> {err}")
+    20      # else: print(f"ok p={msg.partition()} o={msg.offset()}")
+    21
+    22  def main():
+    23      ap = argparse.ArgumentParser()
+    24      ap.add_argument("--bootstrap", default="localhost:9092")
+    25      ap.add_argument("--topic", default="lab05.facturacion.emitida")
+    26      ap.add_argument("--n", type=int, default=5000)
+    27      ap.add_argument("--acks", default="all")            # 0 | 1 | all
+    28      ap.add_argument("--linger", type=int, default=0)     # ms
+    29      ap.add_argument("--compression", default="none")     # none | snappy | lz4 | zstd | gzip
+    30      ap.add_argument("--idempotence", action="store_true")
+    31      a = ap.parse_args()
+    32
+    33      conf = {
+    34          "bootstrap.servers": a.bootstrap,
+    35          "client.id": "lab05-productor",
+    36          "acks": a.acks,
+    37          "linger.ms": a.linger,
+    38          "compression.type": a.compression,
+    39          "enable.idempotence": a.idempotence,
+    40          # TODO (paso 1): agregue batch.size y delivery.timeout.ms y justifique los valores en el informe
+    41      }
+    42      if a.idempotence:
+    43          conf["acks"] = "all"   # la idempotencia exige acks=all
+    44      p = Producer(conf)
+    45
+    46      t0 = time.time()
+    47      for _ in range(a.n):
+    48          k, v = construir_evento()
+    49          # TODO (paso 1): la clave debe ser el NIT para conservar el orden por contribuyente
+    50          p.produce(a.topic, key=k, value=json.dumps(v), callback=entregado)
+    51          p.poll(0)   # sirve los callbacks pendientes
+    52      p.flush()
+    53      dt = time.time() - t0
+    54      print(f"acks={a.acks} linger={a.linger} compression={a.compression} idempotence={a.idempotence} "
+    55            f"-> {a.n} eventos en {dt:.2f}s = {a.n/dt:.0f} ev/s, errores={errores}")
+    56
+    57  if __name__ == "__main__":
+    58      main()
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$         "batch.size": 65536,             # 64 KB: lotes más grandes -> más throughput y mejor compresión
+        "delivery.timeout.ms": 120000,   # 2 min: tiempo máximo para entregar, incluidos los reintentos
+batch.size:: command not found
+delivery.timeout.ms:: command not found
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ sed -i '40s|.*|        "batch.size": 65536,\n        "delivery.timeout.ms": 120000,|' codigo/productor_facturacion.py
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ sed -n '33,42p' codigo/productor_facturacion.py
+    conf = {
+        "bootstrap.servers": a.bootstrap,
+        "client.id": "lab05-productor",
+        "acks": a.acks,
+        "linger.ms": a.linger,
+        "compression.type": a.compression,
+        "enable.idempotence": a.idempotence,
+        "batch.size": 65536,
+        "delivery.timeout.ms": 120000,
+    }
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ python3 codigo/productor_facturacion.py --topic "$TOPIC" --n 2000 --acks all
+acks=all linger=0 compression=none idempotence=False -> 2000 eventos en 4.36s = 459 ev/s, errores=0
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ docker exec broker1 /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server broker1:19092 \
+  --topic "$TOPIC" --from-beginning --max-messages 10 \
+  --property print.key=true --property print.partition=true 2>/dev/null
+Partition:0     922984852       {"id_evento": "01b34ba7-dcc0-41b0-9945-e7d3cb774f57", "nit_emisor": "922984852", "cufe": "137ab280c1fb4677be03acc9ba7aaab1", "valor_total": 313252.96, "estado": "VALIDADA"}
+Partition:0     932311105       {"id_evento": "50b64091-04ac-4230-b2c7-0f139082cdcd", "nit_emisor": "932311105", "cufe": "510d94702cd1426ca35e2528cc6fb283", "valor_total": 4099724.21, "estado": "VALIDADA"}
+Partition:0     995226965       {"id_evento": "91d21b7e-3143-42f8-9ecb-7904a4f69868", "nit_emisor": "995226965", "cufe": "672e0fa0c98f4fa288eae8de8b8494b2", "valor_total": 3115114.01, "estado": "VALIDADA"}
+Partition:0     944008878       {"id_evento": "721b1958-ede3-449d-b189-46e56698d1d6", "nit_emisor": "944008878", "cufe": "4558248748464aad912f665071b6de12", "valor_total": 4799423.84, "estado": "VALIDADA"}
+Partition:0     949198382       {"id_evento": "2c210654-d331-4721-9890-19b0014e27f9", "nit_emisor": "949198382", "cufe": "161f6538aeed4733b33be7dcea3ab109", "valor_total": 3254082.98, "estado": "VALIDADA"}
+Partition:0     958684720       {"id_evento": "3d03e9a0-277b-4440-b1a4-f88fbcd081b4", "nit_emisor": "958684720", "cufe": "363782a1d0b04decb15eda2668ae6221", "valor_total": 4366768.14, "estado": "VALIDADA"}
+Partition:0     911453989       {"id_evento": "2bffdc4c-f7c3-47cd-8dd4-8485b1136b37", "nit_emisor": "911453989", "cufe": "ab7ab85609554198a91ce9a05d9a7a25", "valor_total": 2742528.73, "estado": "VALIDADA"}
+Partition:0     974158664       {"id_evento": "54f77539-2302-43a8-9e47-f480a56afba9", "nit_emisor": "974158664", "cufe": "195e73ed94e74d979c5c62ce945221bf", "valor_total": 1801344.34, "estado": "VALIDADA"}
+Partition:0     933075335       {"id_evento": "59417f7d-4f7e-469a-859b-17254bfc825b", "nit_emisor": "933075335", "cufe": "64450de97a5846c28500bd7859040337", "valor_total": 4091289.2, "estado": "VALIDADA"}
+Partition:0     996423857       {"id_evento": "7b1978b5-de39-4fc3-8fbc-2fa21d1dba4d", "nit_emisor": "996423857", "cufe": "095cbca3c24644c78e4f0269de06df03", "valor_total": 3877551.42, "estado": "VALIDADA"}
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ docker exec broker1 /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server broker1:19092 \
+  --topic "$TOPIC" --from-beginning --timeout-ms 10000 \
+  --property print.key=true --property print.partition=true 2>/dev/null \
+| awk '{print $1, $2}' | sort -u | awk '{print $2}' | uniq -d | wc -l
+0
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ for a in 0 1 all; do python3 codigo/productor_facturacion.py --topic "$TOPIC" --n 20000 --acks $a; done
+acks=0 linger=0 compression=none idempotence=False -> 20000 eventos en 2.47s = 8083 ev/s, errores=0
+acks=1 linger=0 compression=none idempotence=False -> 20000 eventos en 5.43s = 3681 ev/s, errores=0
+acks=all linger=0 compression=none idempotence=False -> 20000 eventos en 21.25s = 941 ev/s, errores=0
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ python3 codigo/bench.py --topic "$TOPIC" --n 20000 > mediciones.md
+cat mediciones.md
+docker exec broker1 sh -c "du -sh /var/lib/kafka/data/${TOPIC}-*"
+nproc; uptime
+## Paso 2: acks
+| acks | ev/s |
+|---|---|
+| 0 | 8113 |
+| 1 | 4344 |
+| all | 1378 |
+
+## Paso 3: linger.ms × compression.type (acks=all)
+| linger.ms | compression | ev/s |
+|---|---|---|
+| 0 | none | 1283 |
+| 0 | snappy | 1297 |
+| 0 | zstd | 1581 |
+| 20 | none | 22432 |
+| 20 | snappy | 18493 |
+| 20 | zstd | 22852 |
+| 100 | none | 30609 |
+| 100 | snappy | 24988 |
+| 100 | zstd | 23142 |
+
+Tamaño en disco por combinación: docker exec broker1 du -sh /var/lib/kafka/data/equipo01.lab05.facturacion.emitida-*
+8.7M    /var/lib/kafka/data/equipo01.lab05.facturacion.emitida-0
+8.9M    /var/lib/kafka/data/equipo01.lab05.facturacion.emitida-1
+8.8M    /var/lib/kafka/data/equipo01.lab05.facturacion.emitida-2
+8.8M    /var/lib/kafka/data/equipo01.lab05.facturacion.emitida-3
+8.7M    /var/lib/kafka/data/equipo01.lab05.facturacion.emitida-4
+8.9M    /var/lib/kafka/data/equipo01.lab05.facturacion.emitida-5
+4
+ 16:42:27 up  3:12,  0 user,  load average: 7.80, 4.05, 2.31
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ docker exec broker1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker1:19092 --describe --topic "$TOPIC" | grep "Partition: 0"
+        Topic: equipo01.lab05.facturacion.emitida       Partition: 0    Leader: 1       Replicas: 1,2,3 Isr: 1,2,3      Elr:    LastKnownElr: 
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ python3 codigo/productor_facturacion.py --topic "$TOPIC" --n 200000 --acks all --linger 20
+acks=all linger=20 compression=none idempotence=False -> 200000 eventos en 8.39s = 23845 ev/s, errores=0
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ docker ps --format '{{.Names}}\t{{.Status}}' | grep broker
+broker1 Up About an hour (healthy)
+broker3 Up About an hour (healthy)
+broker2 Up About an hour (healthy)
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ python3 codigo/productor_facturacion.py --topic "$TOPIC" --n 1000000 --acks all --linger 20 &
+sleep 5
+docker stop broker1
+wait
+docker start broker1
+[1] 372209
+%6|1793119990.166|FAIL|lab05-productor#producer-1| [thrd:localhost:9092/1]: localhost:9092/1: Disconnected: connection closed by peer: receive 0 after POLLIN (after 7164ms in state UP)
+broker1
+acks=all linger=20 compression=none idempotence=False -> 1000000 eventos en 39.66s = 25216 ev/s, errores=0
+[1]+  Done                    python3 codigo/productor_facturacion.py --topic "$TOPIC" --n 1000000 --acks all --linger 20
+broker1
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ sleep 20; docker ps --format '{{.Names}}\t{{.Status}}' | grep broker
+broker1 Up About a minute (healthy)
+broker3 Up About an hour (healthy)
+broker2 Up About an hour (healthy)
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ TOPIC_IDEM=$EQUIPO.lab05.idem
+docker exec broker1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker1:19092 \
+  --create --topic "$TOPIC_IDEM" --partitions 6 --replication-factor 3 --config min.insync.replicas=2
+
+python3 codigo/productor_facturacion.py --topic "$TOPIC_IDEM" --n 1000000 --acks all --linger 20 --idempotence &
+sleep 5
+docker stop broker1
+wait
+docker start broker1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic equipo01.lab05.idem.
+[1] 386057
+%4|1793120167.712|GETPID|lab05-productor#producer-1| [thrd:main]: Failed to acquire idempotence PID from broker localhost:9092/1: Broker: Coordinator load in progress: retrying
+%6|1793120174.615|FAIL|lab05-productor#producer-1| [thrd:localhost:9092/1]: localhost:9092/1: Disconnected: connection closed by peer: receive 0 after POLLIN (after 7361ms in state UP)
+broker1
+acks=all linger=20 compression=none idempotence=True -> 1000000 eventos en 41.82s = 23913 ev/s, errores=0
+[1]+  Done                    python3 codigo/productor_facturacion.py --topic "$TOPIC_IDEM" --n 1000000 --acks all --linger 20 --idempotence
+broker1
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ sleep 20
+for T in "$TOPIC_IDEM" "$TOPIC"; do
+  echo "== $T"
+  docker exec broker2 /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server broker2:19092 \
+    --topic "$T" --from-beginning --timeout-ms 30000 2>/dev/null \
+  | python3 -c "import sys,json; ids=[json.loads(l)['id_evento'] for l in sys.stdin if l.strip()]; print('total',len(ids),'unicos',len(set(ids)))"
+done
+== equipo01.lab05.idem
+total 1000000 unicos 1000000
+== equipo01.lab05.facturacion.emitida
+total 1502000 unicos 1502000
+(.venv) estudiante@i-06a2b638ad5637ae8:~/kafka-dian$ 
